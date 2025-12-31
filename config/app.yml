@@ -1,0 +1,29 @@
+services:
+  - host: http://192.168.100.219:8123
+    name: Home Assistant
+    service_type: Http
+    enabled: true
+  - host: http://192.168.100.219:32400
+    name: Plex Media Server
+    service_type: Http
+    enabled: false
+  - host: http://192.168.100.219:8989
+    name: Sonarr
+    service_type: Http
+    enabled: true
+  - host: http://192.168.100.219:7878
+    name: Radarr
+    service_type: Http
+    enabled: true 
+  - host: http://192.168.100.219:9696
+    name: Prowlarr
+    service_type: Http
+    enabled: true 
+  - host: http://192.168.100.219:8080
+    name: bittorrent
+    service_type: Http
+    enabled: true
+  - host: http://192.168.100.122:7575
+    name: Homarr
+    service_type: Http
+    enabled: true  
