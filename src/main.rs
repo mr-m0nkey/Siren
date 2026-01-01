@@ -33,8 +33,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let chat_id = env::var("CHAT_ID").expect("CHAT_ID must be set").parse::<i64>().expect("CHAT_ID must be a valid i64");
 
 
-  
-    let app_config_yaml: String = fs::read_to_string("config/app.yml").expect("Failed to read config/app.yml");
+
+
+    let app_config_yaml: String = fs::read_to_string("config/services.yml").expect("Failed to read config/app.yml");
     let app_config: AppConfig = serde_yaml::from_str(&app_config_yaml)?;
 
 
@@ -115,4 +116,3 @@ async fn handle_http_service(service: Service, bot_sender: mpsc::Sender<String>)
         }
     }
 }
-

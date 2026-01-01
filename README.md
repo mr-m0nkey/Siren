@@ -8,7 +8,7 @@
 
 - Basic HTTP health checks (blocking reqwest behind `spawn_blocking`)
 - Sends notifications to a Telegram chat via `teloxide`
-- Configurable services via `config/app.yml`
+- Configurable services via `config/services.yml`
 
 ---
 
@@ -56,7 +56,7 @@ The program will ping configured services and send messages to the Telegram chat
 
 ---
 
-## 📋 TODOs (requested)
+## 📋 TODOs
 
 These are prioritized tasks with suggested approaches and acceptance criteria.
 
