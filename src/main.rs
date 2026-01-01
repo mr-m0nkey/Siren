@@ -13,6 +13,12 @@ struct Service {
     enabled: bool,
 }
 
+#[derive(Serialize, Deserialize , Debug, Clone)]
+struct ServiceStatus {
+    service: Service,
+    is_up: bool,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 enum ServiceType {
     Http,
@@ -26,13 +32,10 @@ struct AppConfig {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    dotenv().ok(); // Load .env file
-
+    dotenv().ok(); 
 
     let bot = Bot::from_env();
     let chat_id = env::var("CHAT_ID").expect("CHAT_ID must be set").parse::<i64>().expect("CHAT_ID must be a valid i64");
-
-
 
 
     let app_config_yaml: String = fs::read_to_string("config/services.yml").expect("Failed to read config/app.yml");
@@ -44,15 +47,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // We'll spawn Tokio tasks instead of OS threads and use a Tokio channel for async message passing
     let mut ping_tasks = Vec::new();
 
-    let (tx, mut rx) = mpsc::channel::<String>(32);
+    let (bot_sender_channel, mut bot_receiver_channel) = mpsc::channel::<ServiceStatus>(32);
 
-    let bot_clone_for_receiver = bot.clone();
-    let chat_id_for_receiver = chat_id;
     let receiver_handle = tokio::spawn(async move {
-        while let Some(message) = rx.recv().await {
-            if let Err(e) = bot_clone_for_receiver.send_message(
-                teloxide::types::ChatId(chat_id_for_receiver),
-                message
+        while let Some(service_status) = bot_receiver_channel.recv().await {
+            if let Err(e) = bot.send_message(
+                teloxide::types::ChatId(chat_id),
+                service_status.service.name.clone() + if service_status.is_up { " is UP" } else { " is DOWN" }
             ).await {
                 eprintln!("Failed to send message: {:?}", e);
             }
@@ -60,19 +61,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     for service in app_config.services.into_iter().filter(|service| service.enabled) {
-        let tx_clone = tx.clone();
-        let handle = tokio::spawn(async move {
+        let bot_sender_channel_clone = bot_sender_channel.clone();
+        let ping_task = tokio::spawn(async move {
             match service.service_type {
                 ServiceType::Http => {
                     // perform blocking HTTP request in a blocking task
-                    handle_http_service(service, tx_clone).await;
+                    handle_http_service(service, bot_sender_channel_clone).await;
                 },
                 _ => {
                     println!("Unsupported service type for service: {}", service.name);
                 }
             };
         });
-        ping_tasks.push(handle);
+        ping_tasks.push(ping_task);
 
     }
 
@@ -83,7 +84,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    drop(tx); // Close the sender to signal the receiver to finish
+    drop(bot_sender_channel); // Close the sender to signal the receiver to finish
 
     if let Err(e) = receiver_handle.await {
         eprintln!("Receiver task panicked: {:?}", e);
@@ -92,27 +93,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn handle_http_service(service: Service, bot_sender: mpsc::Sender<String>) {
+async fn handle_http_service(service: Service, bot_sender: mpsc::Sender<ServiceStatus>) {
     println!("Pinging HTTP service: {}", service.name);
     let name = service.name.clone();
     let host = service.host.clone();
 
-    // run the blocking reqwest call in a blocking thread
-    let res = tokio::task::spawn_blocking(move || reqwest::blocking::get(host.as_str())).await;
+    let res = reqwest::get(host.as_str()).await;
 
-    //TODO: pass a struct to the receiver, the receiver should format the message based on the struct
+
     match res {
-        Ok(Ok(_resp)) => {
+        Ok(_resp) => {
             println!("{} is UP", name);
-            if bot_sender.send(service.name + " is UP [" + service.host.as_str() + "]").await.is_err() {
+            let service_status = ServiceStatus { service: service.clone(), is_up: true };
+            if bot_sender.send(service_status).await.is_err() {
                 eprintln!("Receiver dropped when sending UP for {}", name);
             }
         },
         _ => {
             println!("{} is DOWN", name);
-            if bot_sender.send(service.name + " is DOWN [" + service.host.as_str() + "]").await.is_err() {
-                eprintln!("Receiver dropped when sending DOWN for {}", name);
+            let service_status = ServiceStatus { service: service.clone(), is_up: true };
+            if bot_sender.send(service_status).await.is_err() {
+                eprintln!("Receiver dropped when sending UP for {}", name);
             }
         }
+
+        
     }
+
+    
 }
