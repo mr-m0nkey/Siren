@@ -3,7 +3,6 @@ use serde::{Serialize, Deserialize};
 use teloxide::{Bot, prelude::Requester};
 use dotenv::dotenv;
 use tokio::sync::mpsc;
-use tokio::task;
 
 
 #[derive(Serialize, Deserialize , Debug, Clone)]
@@ -34,18 +33,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let chat_id = env::var("CHAT_ID").expect("CHAT_ID must be set").parse::<i64>().expect("CHAT_ID must be a valid i64");
 
 
-    //move to a new thread
-    // bot.send_message(
-    //     teloxide::types::ChatId(chat_id), 
-    //     "Siren Bot Started!"
-    // ).await?;
-
-
+  
     let app_config_yaml: String = fs::read_to_string("config/app.yml").expect("Failed to read config/app.yml");
     let app_config: AppConfig = serde_yaml::from_str(&app_config_yaml)?;
 
 
-    //have a single thread watching the list of services and spawn a small health check thread (from a thread pool) to ping the service when it's scheduled time is reached.
 
 
     // We'll spawn Tokio tasks instead of OS threads and use a Tokio channel for async message passing
@@ -107,6 +99,7 @@ async fn handle_http_service(service: Service, bot_sender: mpsc::Sender<String>)
     // run the blocking reqwest call in a blocking thread
     let res = tokio::task::spawn_blocking(move || reqwest::blocking::get(host.as_str())).await;
 
+    //TODO: pass a struct to the receiver, the receiver should format the message based on the struct
     match res {
         Ok(Ok(_resp)) => {
             println!("{} is UP", name);

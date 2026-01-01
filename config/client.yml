@@ -1,0 +1,6 @@
+client_name: Box
+
+seed:
+  - host: 192.168.100.219
+    name: Pi
+
