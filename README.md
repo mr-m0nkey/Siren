@@ -6,7 +6,7 @@
 
 ## ✅ Features (current)
 
-- Basic HTTP health checks (blocking reqwest behind `spawn_blocking`)
+- Basic HTTP uptime checks
 - Sends notifications to a Telegram chat via `teloxide`
 - Configurable services via `config/services.yml`
 
@@ -44,15 +44,6 @@ cargo run
 ```
 
 The program will ping configured services and send messages to the Telegram chat.
-
----
-
-## 🔧 Notes & Implementation details
-
-- The project is async (Tokio) but uses `reqwest::blocking` inside `tokio::task::spawn_blocking` for synchronous HTTP checks.
-- Message passing is implemented with `tokio::sync::mpsc` and a dedicated receiver task that forwards messages to the bot.
-
-> TIP: The receiver task exits when all senders are dropped (so the main sender is dropped after tasks finish).
 
 ---
 
