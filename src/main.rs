@@ -3,6 +3,12 @@ use serde::{Deserialize, Serialize};
 use std::{env, fs};
 use teloxide::{Bot, prelude::Requester};
 use tokio::sync::mpsc::{self, Sender};
+use gossip::heartbeat_server::{Heartbeat, HeartbeatServer};
+
+
+pub mod gossip {
+    tonic::include_proto!("gossip");
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Service {
@@ -79,9 +85,16 @@ impl TelegramNotifier {
 
 }
 
+
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
+
+    // tonic_build::compile_protos("proto/helloworld.proto")?;
+
+
+
 
     let app_config_yaml: String =
         fs::read_to_string("config/services.yml").expect("Failed to read config/app.yml");
@@ -156,3 +169,6 @@ async fn handle_http_service(service: Service, bot_sender: mpsc::Sender<ServiceS
         }
     }
 }
+
+
+

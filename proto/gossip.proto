@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package gossip;
+
+service Heartbeat {
+  rpc check_heartbeat (HeartbeatRequest) returns (HeartbeatResponse);
+}
+
+message HeartbeatRequest {
+  string requester = 1;
+}
+
+message HeartbeatResponse {
+  string responder = 1;
+}
+
