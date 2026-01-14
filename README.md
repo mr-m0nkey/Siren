@@ -60,7 +60,7 @@ These are prioritized tasks with suggested approaches and acceptance criteria.
      - Tests: integration test demonstrating two local agents split a list of 4 services and cover reassignment when one shuts down
    - Complexity: Medium–High
 
-2. Ability to schedule pings ⏱️
+2. Ability to schedule pings ⏱️ [Done]
    - Goal: Add scheduling so each service can be pinged at a configured interval (cron-like or interval in seconds).
    - Approaches: use `tokio::time::interval`, or integrate a scheduler crate (e.g., `cron` or `tokio-cron-scheduler`).
    - Acceptance criteria:
@@ -77,6 +77,14 @@ These are prioritized tasks with suggested approaches and acceptance criteria.
      - TCP check reports UP when connect succeeds within timeout, DOWN otherwise
      - Tests: unit/integration test for an ephemeral TCP listener
    - Complexity: Low
+
+3. Docker Deployment
+   - Goal: Deploy to docker so it can be used in kubernetes or with docker-compose
+   - Complexity: Low
+
+
+4. Code Review
+    - Goal: Clean up code, especially around async code.
 
 ---
 
