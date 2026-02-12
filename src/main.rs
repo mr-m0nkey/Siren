@@ -14,6 +14,7 @@ pub mod gossip {
     tonic::include_proto!("gossip");
 }
 
+//TODO find a way to refresh configs without restarts
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Service {
     host: String,
@@ -40,6 +41,7 @@ struct AppConfig {
     services: Vec<Service>,
 }
 
+//TODO add a way to implement gossip protocol
 struct Gossip {}
 
 
@@ -99,7 +101,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let telegram_notifier = TelegramNotifier::new();
 
-    // let mut ping_tasks = Vec::new();
 
     let mut scheduler = AsyncScheduler::new();
 
@@ -110,7 +111,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         let bot_sender_channel = telegram_notifier.telegram_sender_channel.clone();
         scheduler.every(service.interval.seconds()).run(move || {
-            println!("triggered");
             let bot_sender_channel = bot_sender_channel.clone();
             let service = service.clone();
             async move {
@@ -143,6 +143,7 @@ async fn handle_http_service(service: Service, bot_sender: mpsc::Sender<ServiceS
 
     let res = reqwest::get(host.as_str()).await;
 
+    //TODO don't send notifications until there's a new state
     match res {
         Ok(_resp) => {
             println!("{} is UP", name);
@@ -171,6 +172,6 @@ async fn handle_http_service(service: Service, bot_sender: mpsc::Sender<ServiceS
             }
             previous_is_up = false;
             first_run = false;
-        } // tokio::time::sleep(Duration::from_secs(service.interval)).await;
+        } 
     }
 }

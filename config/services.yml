@@ -13,7 +13,7 @@ services:
     name: Sonarr
     service_type: Http
     enabled: true
-    interval: 10
+    interval: 120
   - host: http://192.168.100.186:7878
     name: Radarr
     service_type: Http
@@ -28,9 +28,9 @@ services:
     name: bittorrent
     service_type: Http
     enabled: true
-    interval: 5
+    interval: 120
   - host: http://192.168.100.186:30447
     name: Homarr
     service_type: Http
     enabled: true  
-    interval: 5
+    interval: 120
