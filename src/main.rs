@@ -9,7 +9,6 @@ use tokio::sync::mpsc::{self, Sender};
 use clokwerk::{AsyncScheduler, Job, TimeUnits};
 // Import week days and WeekDay
 use clokwerk::Interval::*;
-use std::time::Duration;
 
 pub mod gossip {
     tonic::include_proto!("gossip");
@@ -43,7 +42,6 @@ struct AppConfig {
 
 struct Gossip {}
 
-struct Scheduler {}
 
 struct TelegramNotifier {
     telegram_sender_channel: Sender<ServiceStatus>,
@@ -110,40 +108,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .into_iter()
         .filter(|service| service.enabled)
     {
-        scheduler
-            .every(10.minutes())
-            .plus(30.seconds())
-            .run(|| async {
-                println!("Simplest is just using an async block");
-            });
-
-        // let bot_sender_channel_clone = bot_sender_channel.clone();
-        let bot_sender_channel_clone = telegram_notifier.telegram_sender_channel.clone();
-
-        // let ping_task = tokio::spawn(async move {
-        //     match service.service_type {
-        //         ServiceType::Http => {
-        //             // perform blocking HTTP request in a blocking task
-        //             handle_http_service(service, bot_sender_channel_clone).await;
-        //         }
-        //         _ => {
-        //             println!("Unsupported service type for service: {}", service.name);
-        //         }
-        //     };
-        // });
-        // ping_tasks.push(ping_task);
+        let bot_sender_channel = telegram_notifier.telegram_sender_channel.clone();
+        scheduler.every(service.interval.seconds()).run(move || {
+            println!("triggered");
+            let bot_sender_channel = bot_sender_channel.clone();
+            let service = service.clone();
+            async move {
+                match service.service_type {
+                    ServiceType::Http => {
+                        // perform blocking HTTP request in a blocking task
+                        handle_http_service(service, bot_sender_channel).await;
+                    }
+                    _ => {
+                        println!("Unsupported service type for service: {}", service.name);
+                    }
+                };
+            }
+        });
     }
 
-    // wait for all ping tasks to finish and then the receiver
-    // for ping_task in ping_tasks {
-    //     if let Err(e) = ping_task.await {
-    //         eprintln!("Task panicked: {:?}", e);
-    //     }
-    // }
+    loop {
+        scheduler.run_pending().await;
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
 
-    // drop(telegram_notifier.telegram_sender_channel); // Close the sender to signal the receiver to finish
-
-    Ok(())
 }
 
 async fn handle_http_service(service: Service, bot_sender: mpsc::Sender<ServiceStatus>) {
@@ -153,39 +141,36 @@ async fn handle_http_service(service: Service, bot_sender: mpsc::Sender<ServiceS
     let mut previous_is_up = false;
     let mut first_run = true;
 
-    loop {
-        let res = reqwest::get(host.as_str()).await;
+    let res = reqwest::get(host.as_str()).await;
 
-        match res {
-            Ok(_resp) => {
-                println!("{} is UP", name);
-                let service_status = ServiceStatus {
-                    service: service.clone(),
-                    is_up: true,
-                };
-                if (first_run || previous_is_up != true)
-                    && bot_sender.send(service_status).await.is_err()
-                {
-                    eprintln!("Receiver dropped when sending UP for {}", name);
-                }
-                previous_is_up = true;
-                first_run = false;
+    match res {
+        Ok(_resp) => {
+            println!("{} is UP", name);
+            let service_status = ServiceStatus {
+                service: service.clone(),
+                is_up: true,
+            };
+            if (first_run || previous_is_up != true)
+                && bot_sender.send(service_status).await.is_err()
+            {
+                eprintln!("Receiver dropped when sending UP for {}", name);
             }
-            _ => {
-                println!("{} is DOWN", name);
-                let service_status = ServiceStatus {
-                    service: service.clone(),
-                    is_up: false,
-                };
-                if (first_run || previous_is_up != false)
-                    && bot_sender.send(service_status).await.is_err()
-                {
-                    eprintln!("Receiver dropped when sending UP for {}", name);
-                }
-                previous_is_up = false;
-                first_run = false;
-            }
+            previous_is_up = true;
+            first_run = false;
         }
-        // tokio::time::sleep(Duration::from_secs(service.interval)).await;
+        _ => {
+            println!("{} is DOWN", name);
+            let service_status = ServiceStatus {
+                service: service.clone(),
+                is_up: false,
+            };
+            if (first_run || previous_is_up != false)
+                && bot_sender.send(service_status).await.is_err()
+            {
+                eprintln!("Receiver dropped when sending UP for {}", name);
+            }
+            previous_is_up = false;
+            first_run = false;
+        } // tokio::time::sleep(Duration::from_secs(service.interval)).await;
     }
 }
