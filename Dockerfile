@@ -1,21 +1,24 @@
-# Update to a specific version
+# TODO: Update to a specific version
 FROM rust:latest AS builder 
+
+RUN apt-get update && \
+    apt-get install -y protobuf-compiler
 
 
 WORKDIR /usr/src/siren
 
 
-# Copy only Cargo.toml and Cargo.lock first to cache dependencies
-COPY Cargo.toml Cargo.lock ./
+# COPY Cargo.toml Cargo.lock ./
 
-# Copy only the main source file for now
-COPY src/main.rs src/main.rs
+# COPY src/main.rs src/main.rs
 
-RUN cargo build --release
+# COPY proto proto
 
 COPY . .
 
+RUN cargo build --release
 
+# COPY . .
 
 # TODO: Add volumes for config files
 FROM debian:trixie-slim

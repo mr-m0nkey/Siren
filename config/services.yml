@@ -1,35 +1,35 @@
 services:
-  - host: http://192.168.100.219:8123
+  - host: http://192.168.100.166:8123
     name: Home Assistant
     service_type: Http
     enabled: true
     interval: 60
-  - host: http://192.168.100.219:32400
+  - host: http://192.168.100.186:31028
     name: Plex Media Server
     service_type: Http
     enabled: false
     interval: 60
-  - host: http://192.168.100.219:8989
+  - host: http://192.168.100.186:8989
     name: Sonarr
     service_type: Http
     enabled: true
     interval: 10
-  - host: http://192.168.100.219:7878
+  - host: http://192.168.100.186:7878
     name: Radarr
     service_type: Http
     enabled: true 
     interval: 10
-  - host: http://192.168.100.219:9696
+  - host: http://192.168.100.186:9696
     name: Prowlarr
     service_type: Http
     enabled: true 
     interval: 8
-  - host: http://192.168.100.219:8080
+  - host: http://192.168.100.186:8080
     name: bittorrent
     service_type: Http
     enabled: true
     interval: 5
-  - host: http://192.168.100.122:7575
+  - host: http://192.168.100.186:30447
     name: Homarr
     service_type: Http
     enabled: true  

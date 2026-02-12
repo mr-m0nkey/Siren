@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package gossip;
+
+service snapshot {
+  rpc get_snapchot (SnapshotRequest) returns (SnapshotResponse);
+}
+
+message SnapshotRequest {
+  string name = 1;
+}
+
+message SnapshotResponse {
+  string message = 1;
+}
