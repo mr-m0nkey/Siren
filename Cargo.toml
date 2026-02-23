@@ -13,12 +13,15 @@ log = "0.4"
 pretty_env_logger = "0.5"
 tokio = { version =  "1.8", features = ["rt-multi-thread", "macros"] }
 dotenv = "0.15"
-tonic = "0.12.3"
-prost = "0.13.5"
 clokwerk = "0.4.0"
+tonic = { version = "0.12", features = ["transport"] }
+prost = "0.13"
+prost-types = "0.13"
+tonic-build = "0.12"
 
 [build-dependencies]
-tonic-build = "0.12.3"
+tonic-build = "0.12"
+prost-build = "0.13"
 
 [[bin]]
 name = "siren"

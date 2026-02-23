@@ -2220,6 +2220,8 @@ dependencies = [
  "log",
  "pretty_env_logger",
  "prost",
+ "prost-build",
+ "prost-types",
  "reqwest 0.13.1",
  "serde",
  "serde_yaml",
