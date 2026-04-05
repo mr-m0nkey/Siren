@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+if [ ${EUID} -ne 0 ]
+then
+    echo "This script requires root to run, run with 'sudo ./docker-build.sh'"
+	exit 1 # this is meant to be run as root
+fi
+
+echo "Building Image..."
+echo "============================================="
+docker build -t siren .
+
+echo "Build completed!"
+echo "============================================="
+read -p "Should I run the image? [y/n] " answer
+
+if [ "$answer" = "y" ]; then
+    echo "Starting image"
+    echo "========================================="
+    docker run --rm -e TELOXIDE_TOKEN='{{TELOXIDE_TOKEN}}' -e CHAT_ID='{{CHAT_ID}}' siren
+fi
