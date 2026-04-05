@@ -1,13 +1,15 @@
 use dotenv::dotenv;
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, Mutex};
 use std::{env, fs, time::Duration};
 use teloxide::{Bot, prelude::Requester};
+use tokio::sync::RwLock;
 use tokio::sync::mpsc::{self, Sender};
-use tonic::{transport::Server, Request, Response, Status};
-
+use tonic::client;
+use tonic::{Request, Response, Status, transport::Server};
 
 // Scheduler, trait for .seconds(), .minutes(), etc., and trait with job scheduling methods
-use clokwerk::{AsyncScheduler, Job, TimeUnits};
+use clokwerk::{AsyncScheduler, Job, Scheduler, TimeUnits};
 // Import week days and WeekDay
 use clokwerk::Interval::*;
 
@@ -42,8 +44,35 @@ struct AppConfig {
     services: Vec<Service>,
 }
 
-//TODO add a way to implement gossip protocol
-struct Gossip {}
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct Client {
+    host: String,
+    name: String,
+    online: Option<bool>,
+    ping_interval_seconds: u32,
+}
+
+#[derive(Debug, Clone)]
+struct AppContext {
+    services: Arc<RwLock<Vec<Service>>>,
+    clients: Arc<RwLock<Vec<Client>>>,
+}
+
+impl AppContext {
+    fn new(clients: Vec<Client>, services: Vec<Service>) -> AppContext {
+        AppContext {
+            services: Arc::new(RwLock::new(services)),
+            clients: Arc::new(RwLock::new(clients)),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct App {
+    services: Vec<Service>,
+    clients: Vec<Client>,
+    online: Option<bool>,
+}
 
 struct TelegramNotifier {
     telegram_sender_channel: Sender<ServiceStatus>,
@@ -97,39 +126,83 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app_config_yaml: String =
         fs::read_to_string("config/services.yml").expect("Failed to read config/app.yml");
-    let app_config: AppConfig = serde_yaml::from_str(&app_config_yaml)?;
+    let app: App = serde_yaml::from_str(&app_config_yaml)?;
+
+    let app_context = AppContext::new(app.clients, app.services);
 
     let telegram_notifier = TelegramNotifier::new();
 
-    let mut scheduler = AsyncScheduler::new();
+    let mut uptime_check_sheduler = AsyncScheduler::new();
 
-    for service in app_config
+    let services: Vec<Service> = app_context
         .services
-        .into_iter()
-        .filter(|service| service.enabled)
-    {
+        .read()
+        .await
+        .iter()
+        .filter(|s| s.enabled)
+        .cloned()
+        .collect();
+
+    //TODO use Arc<Mutex>> for services so they can be updated
+    for service in services {
         let bot_sender_channel = telegram_notifier.telegram_sender_channel.clone();
-        scheduler.every(service.interval.seconds()).run(move || {
-            let bot_sender_channel = bot_sender_channel.clone();
-            let service = service.clone();
-            async move {
-                match service.service_type {
-                    ServiceType::Http => {
-                        // perform blocking HTTP request in a blocking task
-                        handle_http_service(service, bot_sender_channel).await;
+        uptime_check_sheduler
+            .every(service.interval.seconds())
+            .run(move || {
+                let bot_sender_channel = bot_sender_channel.clone();
+                let service = service.clone();
+                async move {
+                    match service.service_type {
+                        ServiceType::Http => {
+                            // perform blocking HTTP request in a blocking task
+                            handle_http_service(service, bot_sender_channel).await;
+                        }
+                        _ => {
+                            println!("Unsupported service type for service: {}", service.name);
+                        }
+                    };
+                }
+            });
+    }
+
+    let mut ping_scheduler = AsyncScheduler::new();
+
+    for client in app_context.clients.read().await.iter() {
+        let client_clone = client.clone();
+        let clients_clone = app_context.clients.clone();
+
+        ping_scheduler
+            .every(client_clone.ping_interval_seconds.second())
+            .run(move || {
+                let is_client_up: bool = ping_client(&client_clone);
+                let client_clone_2 = client_clone.clone();
+                let clients_clone_2 = clients_clone.clone();
+
+                async move {
+                    let mut binding = clients_clone_2.write().await;
+                    let mut client_option =
+                        binding.iter_mut().find(|c| c.host == client_clone_2.host);
+                    match client_option {
+                        Some(found_client) => {
+                            found_client.online = Some(is_client_up);
+                        }
+
+                        None => {
+                        }
                     }
-                    _ => {
-                        println!("Unsupported service type for service: {}", service.name);
-                    }
-                };
-            }
-        });
+                }
+            });
     }
 
     loop {
-        scheduler.run_pending().await;
+        ping_scheduler.run_pending().await;
+        uptime_check_sheduler.run_pending().await;
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
+}
+
+fn ping_client(client: &Client) -> bool {
+    todo!();
 }
 
 async fn handle_http_service(service: Service, bot_sender: mpsc::Sender<ServiceStatus>) {

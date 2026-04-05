@@ -1,3 +1,9 @@
+clients:
+  - host: 192.168.100.219
+    name: Pi
+    ping_interval_seconds: 5
+
+
 services:
   - host: http://192.168.100.166:8123
     name: Home Assistant
